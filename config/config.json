@@ -1,0 +1,10 @@
+{
+    "movie_path": "",
+    "image_path": "",
+    "box": {
+        "x": 50,
+        "y": 50
+    },
+    "sample_times": 1000,
+    "sampler_count": 10
+}
