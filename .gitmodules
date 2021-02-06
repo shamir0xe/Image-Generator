@@ -1,0 +1,3 @@
+[submodule "libs/PythonLibrary"]
+	path = libs/PythonLibrary
+	url = git@github.com:shamir0xe/PythonLibrary.git
