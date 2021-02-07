@@ -1,6 +1,6 @@
 {
-    "movie_path": "",
-    "image_path": "",
+    "movie_path": "~/Pictures/cool.jpg",
+    "image_path": "/home/shamir0xe/Pictures/cool.jpg",
     "box": {
         "x": 50,
         "y": 50
