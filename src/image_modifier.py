@@ -16,8 +16,8 @@ class ImageModifier:
         debug_text('image size: %', image.size)
         res_image = Image.new('RGB', image.size)
         box = {
-            'x': math.ceil(x_len / properties['box']['x']),
-            'y': math.ceil(y_len / properties['box']['y'])
+            'x': math.ceil(x_len / properties['box']),
+            'y': math.ceil(y_len / properties['box'])
         }
         box['x'] = max(box['y'], box['x'])
         box['y'] = math.ceil(box['x'] / properties['ratio'])
