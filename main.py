@@ -27,9 +27,13 @@ def main():
     debug_text('read file is: %', config)
     # 3) optional - turning the image into box-shaped image
     # 4) evaluating the mean-rgb for each box
-    image, mean_rgbs = ImageModifier.get_blured(config['image_path'], {'box': config['box']})
+    image, mean_rgbs = ImageModifier.get_blured(config['image_path'], {
+        'box': config['box'], 
+        'ratio': config['ratio']
+    })
     image.show('nice title')
-    debug_text('mean_rgb array is: %', mean_rgbs)
+    image.save('blured.jpg')
+    # debug_text('mean_rgb array is: %', mean_rgbs)
     # 5) for each box, sample the movie {sample_times} times and find the euclidean
     #   nearest samples, bring {sampler_count} of them 
     # 6) evaluating rgb for each box of the sample movie
