@@ -1,8 +1,13 @@
 {
-    "movie_path": "~/Pictures/cool.jpg",
+    "movie_path": "/home/shamir0xe/Videos/Movies/Im Thinking Of Ending Things (2020) [1080p] [WEBRip] [5.1] [YTS.MX]/Im.Thinking.Of.Ending.Things.2020.1080p.WEBRip.x264.AAC5.1-[YTS.MX].mp4",
     "image_path": "/home/shamir0xe/Pictures/cool.jpg",
+    "movie_frames_path": "/home/shamir0xe/Pictures/MovieSampler/ImThinkingOfEndingThings",
+    "use_frame_directory": true,
+    "movie_sampler_path": "/home/shamir0xe/Pictures/MovieSampler",
     "box": 50,
     "ratio": 1.78,
-    "sample_times": 1000,
-    "sampler_count": 10
+    "frame_count_per_box": 1000,
+    "final_box_width": 400,
+    "max_same_picture": 7
 }
+
