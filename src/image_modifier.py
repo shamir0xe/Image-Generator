@@ -2,7 +2,7 @@ from PIL import Image
 import operator
 import math
 import numpy as np
-from ..libs.PythonLibrary.utils import debug_text
+from ..libs.PythonLibrary.utils import (debug_text, TerminalProcess)
 
 class ImageModifier:
     @staticmethod
@@ -16,11 +16,9 @@ class ImageModifier:
 
     @staticmethod
     def construct_box(image, images, properties):
-        debug_text('size of the images = %', len(images))
         final_image_width = properties['final_box_width'] * properties['dimensions']['x']
         image = image.resize((final_image_width,
             int(final_image_width * image.size[1] / image.size[0])))
-        debug_text('image size: %', image.size)
         x_len, y_len = image.size
         data = image.load()
         box = {
@@ -28,11 +26,13 @@ class ImageModifier:
             'y': y_len / properties['dimensions']['y'],
         }
         count = (properties['dimensions']['x'], properties['dimensions']['y'])
+        terminal_process = TerminalProcess(count[0] * count[1])
         for i in range(count[0]):
             for j in range(count[1]):
                 index = count[0] * j + i
                 # debug_text('going to open % of images with path = %', index, images[index])
-                debug_text('images index: %', index)
+                # debug_text('images index: %', index)
+                terminal_process.hit()
                 temp_image = Image.open(images[index])
                 temp_image = temp_image.resize((math.ceil(box['x']), math.ceil(box['y'])))
                 temp_data = temp_image.load()
@@ -50,7 +50,6 @@ class ImageModifier:
     def get_blured(image_path, properties):
         image = Image.open(image_path)
         x_len, y_len = image.size
-        debug_text('image size: %', image.size)
         res_image = Image.new('RGB', image.size)
         box = {
             'x': math.ceil(x_len / properties['box']),
@@ -59,15 +58,16 @@ class ImageModifier:
         box['x'] = max(box['y'], box['x'])
         box['y'] = math.ceil(box['x'] / properties['ratio'])
         count = (math.ceil(x_len / box['x']), math.ceil(y_len / box['y']))
-        debug_text('count is: %', count)
         mean_rgbs = [[(0, 0, 0) for i in range(count[0])]
                     for j in range(count[1])]
         data = list(image.getdata())
         res_data = res_image.load()
         # res_data = np.ndarray((image.size[1], image.size[0]))
         # debug_text(res_data)
+        terminal_process = TerminalProcess(count[0] * count[1])
         for i in range(count[0]):
             for j in range(count[1]):
+                terminal_process.hit()
                 rgb = (0, 0, 0)
                 total = 0
                 ii = 0
@@ -82,9 +82,6 @@ class ImageModifier:
                 rgb = tuple(map(operator.mul, rgb, (1 / total, 1 / total, 1 / total)))
                 rgb = tuple(map(math.floor, rgb))
                 mean_rgbs[j][i] = rgb
-                debug_text('j, i = %, %', j * box['y'], i * box['x'])
-                debug_text('generated rgb is: %', rgb)
-                debug_text('total cells are: %', total)
                 ii = 0
                 while ii < box['x'] and i * box['x'] + ii < x_len:
                     jj = 0

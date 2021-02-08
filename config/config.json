@@ -6,8 +6,8 @@
     "movie_sampler_path": "/home/shamir0xe/Pictures/MovieSampler",
     "box": 50,
     "ratio": 1.78,
-    "frame_count_per_box": 1000,
+    "frame_count_per_box": 2000,
     "final_box_width": 400,
-    "max_same_picture": 7
+    "max_same_picture": 4
 }
 
