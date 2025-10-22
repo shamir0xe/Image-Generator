@@ -1,21 +1,22 @@
 import operator
 import math
-from ..libs.PythonLibrary.algorithms import MinCostFlow
-from ..libs.PythonLibrary.utils import debug_text
+
+from src.utils.min_cost_flow import MinCostFlow
+
 
 class MinCostMatcher:
     INF = int(1e9)
 
     def __init__(self, image_rgbs, frame_rgbs, properties={}):
         self.max_same_picture = self.INF
-        if 'max_same_picture' in properties:
-            self.max_same_picture = properties['max_same_picture']
+        if "max_same_picture" in properties:
+            self.max_same_picture = properties["max_same_picture"]
         image_array = []
         for i in range(len(image_rgbs)):
             image_array.extend(image_rgbs[i])
         self.image_rgbs = image_array
         self.frame_rgbs = frame_rgbs
-    
+
     def __calc_distance(self, i, j):
         distance = tuple(map(operator.sub, self.image_rgbs[i], self.frame_rgbs[j]))
         distance = tuple(map(operator.pow, distance, (2, 2, 2)))
