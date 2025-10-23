@@ -1,10 +1,14 @@
 import typer
-from src.cmds.run_bot import main
+from src.cmds.run_bot import app as image_generator
+import logging
+
+logging.basicConfig(level=logging.INFO)
+
 
 app = typer.Typer(
     name="MoviePosterGen CLI", help="Generates set of cool posters from some movies"
 )
-app.command(name="run-bot")(main)
+app.add_typer(image_generator)
 
 if __name__ == "__main__":
     app()

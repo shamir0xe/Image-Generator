@@ -4,3 +4,4 @@ pillow
 ortools
 opencv-python
 python-dotenv
+torch
