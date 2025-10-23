@@ -1,0 +1,7 @@
+pylib-0xe
+typer
+pillow
+ortools
+opencv-python
+python-dotenv
+torch

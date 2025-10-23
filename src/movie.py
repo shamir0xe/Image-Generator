@@ -1,19 +1,21 @@
 import cv2
 import os
 
+
 class Movie:
-    def __init__(self, movie_path, options={}):
+    def __init__(self, movie_name, movie_path, options={}):
+        self.movie_name = movie_name
         self.cap = cv2.VideoCapture(movie_path)
-        self.capture_path = os.path.join('data', 'captures')
+        self.capture_path = os.path.join("data", "captures")
         self._duration = None
-        if 'cache_path' in options:
-            self.capture_path = options['cache_path']
+        if "cache_path" in options:
+            self.capture_path = options["cache_path"]
 
     def get_frame(self, seconds):
         self.cap.set(cv2.CAP_PROP_POS_MSEC, seconds * 1000)
         hasFrames, image = self.cap.read()
         if hasFrames:
-            path = os.path.join(self.capture_path, str(seconds) + ".jpg")
+            path = os.path.join(self.capture_path, f"{self.movie_name}-{seconds}.jpg")
             cv2.imwrite(path, image)
             return path
         return None
