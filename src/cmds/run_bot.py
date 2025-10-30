@@ -32,6 +32,7 @@ def read_envs() -> dict[str, Any]:
         "ratio": float(os.getenv("ratio", 0)),
         "alpha": float(os.getenv("alpha", 0)),
         "beta": float(os.getenv("beta", 0)),
+        "crop_box": (int(os.getenv("crop_box_x", 0)), int(os.getenv("crop_box_y", 0))),
     }
 
 
@@ -87,14 +88,13 @@ def post_modification(
 
 
 def get_movie_frames(standard_name: str, envs: dict, generate_frames: bool):
+
     if generate_frames:
+        logger.info("Generting frames...")
         # First clear already cache
         clear_cache(standard_name)
 
         # Create folders
-        envs["movie_frames_path"] = os.path.join(
-            envs["movie_frames_path"], standard_name
-        )
         if not os.path.isdir(envs["movie_frames_path"]):
             os.makedirs(envs["movie_frames_path"])
 
@@ -108,11 +108,13 @@ def get_movie_frames(standard_name: str, envs: dict, generate_frames: bool):
             movie,
             {
                 "total_frames": envs["frame_count_per_box"],
+                "crop_box": envs["crop_box"],
             },
         )
         movie_frames.sort()
         movie.close()
     else:
+        logger.info("Already have the frames, retrieving...")
         # Already have the frames
         movie_frames = File.get_all_files(envs["movie_frames_path"], ext=".jpg")
         movie_frames = [
@@ -192,14 +194,20 @@ def main(
     envs = read_envs()
     envs["movie_path"] += f"{movie_name}.{movie_format}"
     standard_name = movie_standard_name(movie_name)
+    envs["movie_frames_path"] = os.path.join(envs["movie_frames_path"], standard_name)
 
     logger.info("Building blured image...")
     image, mean_rgbs = ImageModifier.get_blured(
         envs["image_path"],
-        {"box": envs["box"], "ratio": envs["ratio"]},
+        {
+            "box": envs["box"],
+        },
     )
     image.show(movie_name)
     image.save(f"assets/{standard_name}.png")
+
+    dimensions = (len(mean_rgbs[0]), len(mean_rgbs))
+    logger.info(f"dimensions = {dimensions}")
 
     logger.info("Retreiving frames")
     movie_frames = get_movie_frames(standard_name, envs, generate_frames)
@@ -210,10 +218,11 @@ def main(
     logger.info("Running MaxMatcher algorithm...")
     max_matcher = MinCostMatcher(mean_rgbs, movie_rgbs)
     order = max_matcher.best_match()
+    # order = max_matcher.solve(10)[0]
 
     logger.info("Constructing final image...")
-    dimensions = (len(mean_rgbs[0]), len(mean_rgbs))
-    final_image = ImageModifier.construct_box(
+
+    final_image = construct_box(
         image,
         [movie_frames[order[i]] for i in range(len(order))],
         mean_rgbs,

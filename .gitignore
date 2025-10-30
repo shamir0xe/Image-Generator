@@ -2,6 +2,7 @@
 *.png
 .DS_Store
 assets/*
+.idea
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

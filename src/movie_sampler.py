@@ -1,20 +1,25 @@
 import random
 import logging
 
+from src.movie import Movie
+from src.utils.terminal_process import TerminalProcess
+
 logger = logging.getLogger(__name__)
 
 
 class MovieSampler:
     @staticmethod
-    def get_random_frames(movie, options={}):
+    def get_random_frames(movie: Movie, options={}):
         movie_duration = int(movie.get_duration())
-        # debug_text('movie duration is: %', movie_duration)
         res = []
-        for i in range(options["total_frames"]):
-            random_second = random.randint(1, movie_duration)
-            frame_path = movie.get_frame(random_second)
-            # debug_text('captured  frame %:% from movie', int(random_second / 60), random_second % 60)
-            # debug_text('saved in %', frame_path)
-            logger.info(f"frame ${i}")
+        if options["crop_box"] and options["crop_box"][0] > 0:
+            movie.set_crop_box(options["crop_box"])
+
+        tp = TerminalProcess(movie_duration)
+        for i in range(movie_duration):
+            tp.hit()
+            frame_path = movie.get_frame(i + 1)
             res.append(frame_path)
-        return res
+
+        random.shuffle(res)
+        return res[:options["total_frames"]]
