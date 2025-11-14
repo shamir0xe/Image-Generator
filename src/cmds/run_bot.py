@@ -10,7 +10,7 @@ import csv
 
 from pylib_0xe.file.file import File
 import typer
-from src.image_modifier import ImageModifier
+from src.image_modifier import ImageModifier, construct_box
 from src.movie_sampler import MovieSampler
 from src.movie import Movie
 from src.min_cost_matcher import MinCostMatcher
