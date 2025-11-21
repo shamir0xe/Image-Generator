@@ -6,8 +6,10 @@ from typing import Annotated, Any
 from dotenv import load_dotenv
 import logging
 import csv
+from PIL import Image
+import subprocess
 
-
+from pathlib import Path
 from pylib_0xe.file.file import File
 import typer
 from src.image_modifier import ImageModifier, construct_box
@@ -15,7 +17,6 @@ from src.movie_sampler import MovieSampler
 from src.movie import Movie
 from src.min_cost_matcher import MinCostMatcher
 from src.utils.terminal_process import TerminalProcess
-
 
 load_dotenv()
 logger = logging.getLogger(__name__)
@@ -33,6 +34,7 @@ def read_envs() -> dict[str, Any]:
         "alpha": float(os.getenv("alpha", 0)),
         "beta": float(os.getenv("beta", 0)),
         "crop_box": (int(os.getenv("crop_box_x", 0)), int(os.getenv("crop_box_y", 0))),
+        "upsample": int(os.getenv("upsample", 2))
     }
 
 
@@ -40,7 +42,12 @@ app = typer.Typer(help="Image generator")
 
 
 def movie_standard_name(movie_name: str) -> str:
-    return "-".join(movie_name.lower().replace("  ", " ").split())
+    out = movie_name.lower()
+    pattern = r"[\(\)\[\]\{\}\<\>\|\+\*\?\\\_\s]"
+    out = re.sub(pattern, " ", out)
+    out = re.sub(r"\s+", " ", out)
+    out = out.strip()
+    return "-".join(out.split())
 
 
 def our_filename(filename: str, sname: str):
@@ -50,9 +57,9 @@ def our_filename(filename: str, sname: str):
 
 @app.command(name="clear-cache")
 def clear_cache(
-    movie_name: Annotated[
-        str, typer.Option(help="Name of the movie you want to remove")
-    ],
+        movie_name: Annotated[
+            str, typer.Option(help="Name of the movie you want to remove")
+        ],
 ):
     envs = read_envs()
     sname = movie_standard_name(movie_name)
@@ -71,10 +78,10 @@ def clear_cache(
 
 @app.command(name="modify")
 def post_modification(
-    movie_name: Annotated[
-        str, typer.Option(help="The movie name available in the path")
-    ],
-    use_gpu: Annotated[bool, typer.Option(help="Force to use GPU")] = False,
+        movie_name: Annotated[
+            str, typer.Option(help="The movie name available in the path")
+        ],
+        use_gpu: Annotated[bool, typer.Option(help="Force to use GPU")] = False,
 ):
     st_name = "-".join(movie_name.lower().split())
     origin_img = ImageModifier.open(f"assets/{st_name}.png")
@@ -88,9 +95,8 @@ def post_modification(
 
 
 def get_movie_frames(standard_name: str, envs: dict, generate_frames: bool):
-
     if generate_frames:
-        logger.info("Generting frames...")
+        logger.info("Generating frames...")
         # First clear already cache
         clear_cache(standard_name)
 
@@ -128,9 +134,8 @@ def get_movie_frames(standard_name: str, envs: dict, generate_frames: bool):
 
 
 def calculate_movie_rgbs(
-    standard_name: str, movie_frames: list[str], envs: dict
+        standard_name: str, movie_frames: list[str], envs: dict
 ) -> list[tuple[int, int, int]]:
-
     frame_rgbs_file = f"assets/{standard_name}-{envs['frame_count_per_box']}.csv"
 
     def resolve():
@@ -179,37 +184,126 @@ def calculate_movie_rgbs(
     return resolve()
 
 
+def save_out_image(final_image: Image.Image, name: str, annotate: bool = True):
+    """Returns the final path as the result"""
+
+    output_dir = Path("outputs")
+    if not Path.is_dir(output_dir):
+        Path.mkdir(output_dir)
+
+    i = 1
+    while True:
+        if annotate:
+            path = output_dir / f"{name}-o{i}.jpg"
+            if Path.is_file(path):
+                i += 1
+                continue
+        else:
+            path = output_dir / f"{name}.jpg"
+        break
+    final_image.save(path)
+
+    return path.stem
+
+
+def crop_image(img: Image.Image) -> Image.Image:
+    # A3
+    target_width: int = 4962
+    target_height: int = 3507
+    target_ratio: float = target_width / target_height
+
+    img_width, img_height = img.size
+
+    if img_width / img_height > target_ratio:
+        delta_h = 0
+        delta_w = (img_width - img_height * target_ratio) // 2
+    else:
+        delta_h = (img_height - img_width / target_ratio) // 2
+        delta_w = 0
+
+    cropped_img = img.crop(
+        (delta_w, delta_h, img_width - delta_w, img_height - delta_h)
+    )
+
+    return cropped_img
+
+
+def final_job(cropped_name: str) -> None:
+    logger.info("Resizing the final image...")
+    output_path = Path("outputs")
+    with subprocess.Popen(
+            ["convert", "-resize", "40%", output_path / f"{cropped_name}.jpg",
+             output_path / f"{cropped_name}-final.jpg"],
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE) as p:
+        p.wait()
+        logger.info("err: %s", p.stderr.read())
+        logger.info("out: %s", p.stdout.read())
+
+
+@app.command(name="sampling")
+def sample_frames(movie_name: Annotated[str, typer.Option(help="The movie name available in the path")]):
+    envs = read_envs()
+    standard_name = movie_standard_name(movie_name)
+    movie_suffix = ""
+    for path in Path(envs["movie_path"]).iterdir():
+        if path.is_file() and movie_standard_name(path.stem) == standard_name:
+            movie_name = path.stem
+            movie_suffix = path.suffix
+    if movie_suffix == "":
+        raise Exception("Movie not found!")
+    logger.info(f"movie: {movie_name}{movie_suffix}")
+    envs["movie_path"] += f"{movie_name}{movie_suffix}"
+    envs["movie_frames_path"] = Path(envs["movie_frames_path"]) / standard_name
+    get_movie_frames(standard_name, envs, True)
+
+
+@app.command(name="crop")
+def crop(image_path: Annotated[str, typer.Option(help="The image path")]):
+    img = Image.open(image_path)
+    img = crop_image(img)
+    image_name = Path(image_path).stem + "-a3"
+    img.save(Path("outputs") / f"{image_name}.jpg")
+    final_job(image_name)
+
+
 @app.command(name="gen")
 def main(
-    movie_name: Annotated[
-        str, typer.Option(help="The movie name available in the path")
-    ],
-    movie_format: Annotated[str, typer.Option(help="Format of the video")],
-    generate_frames: Annotated[
-        bool, typer.Option(help="Force to generate frames from the movie")
-    ] = False,
+        movie_name: Annotated[
+            str, typer.Option(help="The movie name available in the path")
+        ],
+        movie_format: Annotated[str, typer.Option(help="Format of the video")],
+        generate_frames: Annotated[
+            bool, typer.Option(help="Force to generate frames from the movie")
+        ] = False,
+        target_img: Annotated[str | None, typer.Option(help="Target image")] = None,
+        upsample: Annotated[int | None, typer.Option(help="Upsample factor")] = None,
+        capacity: Annotated[int | None, typer.Option(help="Capacity")] = None,
 ):
     logging.info(f"Processing {movie_name}.{movie_format}")
 
     envs = read_envs()
     envs["movie_path"] += f"{movie_name}.{movie_format}"
+    envs["image_path"] = target_img if target_img else envs["image_path"]
     standard_name = movie_standard_name(movie_name)
     envs["movie_frames_path"] = os.path.join(envs["movie_frames_path"], standard_name)
+    envs["upsample"] = upsample if upsample is not None else envs["upsample"]
 
     logger.info("Building blured image...")
     image, mean_rgbs = ImageModifier.get_blured(
         envs["image_path"],
         {
             "box": envs["box"],
+            "upsample": envs["upsample"],
         },
     )
     image.show(movie_name)
     image.save(f"assets/{standard_name}.png")
+    envs["ratio"] = image.size[0] / image.size[1]
 
     dimensions = (len(mean_rgbs[0]), len(mean_rgbs))
     logger.info(f"dimensions = {dimensions}")
 
-    logger.info("Retreiving frames")
+    logger.info("Retrieving frames")
     movie_frames = get_movie_frames(standard_name, envs, generate_frames)
 
     logger.info("Calculating rgbs for frames...")
@@ -217,8 +311,10 @@ def main(
 
     logger.info("Running MaxMatcher algorithm...")
     max_matcher = MinCostMatcher(mean_rgbs, movie_rgbs)
-    order = max_matcher.best_match()
-    # order = max_matcher.solve(10)[0]
+    if capacity is not None:
+        order = max_matcher.solve(capacity)[0]
+    else:
+        order = max_matcher.best_match()
 
     logger.info("Constructing final image...")
 
@@ -233,4 +329,7 @@ def main(
             "final_box_height": envs["final_box_height"],
         },
     )
-    final_image.save(f"assets/{standard_name}-o1.png")
+    final_name = save_out_image(final_image, standard_name)
+    cropped_image = crop_image(final_image)
+    cropped_name = save_out_image(cropped_image, f"{final_name}-a3", annotate=False)
+    final_job(cropped_name)

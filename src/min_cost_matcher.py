@@ -26,7 +26,7 @@ class MinCostMatcher:
     def best_match(self):
         # Factor for the cost in order to determine the best matching
         factor = 1.1
-        s, e = 0, 22
+        s, e = 0, 55
         best_cost = 1e20
         while e - s > 1:
             m = (e + s) >> 1

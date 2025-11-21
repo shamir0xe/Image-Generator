@@ -44,6 +44,10 @@ class ImageModifier:
     def get_blured(image_path, properties):
         image = Image.open(image_path)
         x_len, y_len = image.size
+        # upscale
+        factor = properties["upsample"]
+        image = image.resize((x_len * factor, y_len * factor))
+        x_len, y_len = image.size
         res_image = Image.new("RGB", image.size)
 
         logger.info(f"img size {x_len}, {y_len}")
@@ -56,9 +60,9 @@ class ImageModifier:
         estimated_length = round(y_len / properties["box"])
 
         box = {
-            "y": (estimated_length // yy) * yy,
+            "y": int(math.ceil(1. * estimated_length / yy) * yy + 1e-12),
         }
-        box["x"] = box["y"] * x_len // y_len
+        box["x"] = box["y"] * xx // yy
 
         logger.info(f"x, y: {box['x']}, {box['y']}")
         count = (math.ceil(x_len / box["x"]), math.ceil(y_len / box["y"]))
